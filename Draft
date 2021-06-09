@@ -1,0 +1,86 @@
+function K = FindKieticEnergy_K(Mass,J,I,n)
+
+    global HT
+    global cm
+    for i=1:1:n
+       R(:,:,i) = get_orientation(HT{i});
+    end
+    
+    syms dq1(t) dq2(t) dq3(t) dq4(t) dq5(t) dq6(t) q1(t) q2(t)
+    assumeAlso([dq1(t) dq2(t) dq3(t) dq4(t) dq5(t) dq6(t) q1(t) q2(t)],'real');
+    dq = [1 dq1(t) dq2(t) dq3(t) dq4(t) dq5(t) dq6(t)]';
+
+    %calcualte K
+    syms K real
+    K = 0;
+    vi = 0;
+    n
+    for i=1:n
+        P(:,i)=get_position(HT{i})';
+        Z(:,i)=get_z_fromR(R(:,:,i));
+        if (i==1) vi = [0;0;0]; end
+        if (i==2) 
+            vi = diff(P(:,i-1),t);
+        end
+        wi_Local = [0;dq1(t);0];
+        wi_Base = R(:,:,1)*wi_Local;
+        vpa(SubsInKinetic(wi_Base),5);
+        
+        if (i>1)
+            for j=2:i
+                wi_Base = wi_Base + R(:,:,j)*[0;0;dq(j+1)];
+                wi_Base = vpa(SubsInKinetic(wi_Base),5);
+                wi_Local = R(:,:,i)'*wi_Base;
+                wi_Local = vpa(SubsInKinetic(wi_Local),5);
+                vpa(SubsInKinetic(wi_Local),5);
+            end
+        end
+
+    if (i==1) 
+%         k1 =0.5*Mass(i)*(vi+cross(wi_Local,cm(:,i)))'*...
+%         (vi+cross(wi_Local,cm(:,i)));) 
+        k1 =0.5*Mass(i)*(vi+cross(wi_Base,cm(:,i)))'*...
+        (vi+cross(wi_Base,cm(:,i)));
+        k1 = vpa(SubsInKinetic(k1),5)
+        k2 = 0.5*(wi_Local'*I{i}*wi_Local);
+        k2 = vpa(SubsInKinetic(k2),5)
+        K = K + k1 + k2;
+    end
+    
+%     k1 =
+% 0.034603
+% k2 =
+% 0.32416
+    if (i==2)
+        V = R(:,:,2)'*cross([0;0;dq1(t)],P(:,1));
+%         V = vpa(SubsInKinetic(V),5)
+%         V = diff(R(:,:,2)'*P(:,1),t);
+        vi = cross(wi_Local,cm(:,2));
+%         vi = vpa(SubsInKinetic(vi),5)
+%         V = cross(wi_Base, P(:,1));
+%         vi = cross(wi_Base,cm(:,2));
+        Vvi = V + vi;
+        CM = cm(:,2) - P(:,1);
+        CM = vpa(SubsInKinetic(R(:,:,2)'*CM),5)
+%         Vvi = R(:,:,2)'*cross(dq1(t)*[0;0;1]+dq2(t)*Z(:,2), CM) + R(:,:,2)'*cross(dq1(t)*[0;0;1], P(:,1));
+        L1 = P(:,1);
+        L2 = P(:,2) - P(:,1);
+        Vvi = cross(wi_Local, cm(:,2)) + R(:,:,2)'*(cross(dq1(t)*[0;0;1]+dq2(t)*Z(:,2), L2)+cross(dq1(t)*[0;0;1],L1));
+        
+        k1 = 0.5*Mass(i)*Vvi'*Vvi;
+%         k1 = 0.5*Mass(i)*(0.2+cross(cm(:,i),R(:,:,i)'*wi))'*...
+%         (0.2+cross(cm(:,i),R(:,:,i)'*wi));
+        k1 = vpa(SubsInKinetic(k1),5)
+        k2 = 0.5*wi_Local'*I{i}*wi_Local;
+        k2 = vpa(SubsInKinetic(k2),5)
+        k2 = 0.5*wi_Base'*R(:,:,i)*I{i}*R(:,:,i)'*wi_Base;
+        k2 = vpa(SubsInKinetic(k2),5)
+        K = K + k1 + k2;
+    end
+
+    end
+    
+    
+    K = expand(K)
+    vpa(SubsInKinetic(K),5)
+end
